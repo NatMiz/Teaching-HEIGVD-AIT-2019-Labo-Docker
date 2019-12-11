@@ -1751,3 +1751,6 @@ git reset --hard
 Then, you are ready to go.
 
 There is a link to deeper explanation and procedure about the ending lines written by GitHub: https://help.github.com/articles/dealing-with-line-endings/
+
+[Return to report](report/AIT_Koffi_Mizutani_report.md)
+

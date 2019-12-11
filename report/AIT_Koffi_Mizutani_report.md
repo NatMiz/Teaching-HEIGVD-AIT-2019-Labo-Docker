@@ -25,6 +25,18 @@ Finally we will put into practice decentralized management of web server instanc
 
 ## Task 0: Identify issues and install the tools <a name="task0"></a>
 
+1. **[M1]** The current solution cannot be used in a production environment. If one of the containers unexpectedly crash, it cannot be automatically relaunch; everything must be done manually. There is no automated container management.
+
+2. **[M2]** In order to add a new webapp, we have to modify the docker-compose.yml; we must add the new webapp configuration in it and modify the HAProxy environment section. After that we have to restart completely the infrastructure.
+
+3. **[M3]** We can use [Serf](https://www.serf.io/) to manage the webapps.
+
+4. **[M4]** We could create a Dockerfile for each webapp. We could put all these dockerfile in a `webapp` directory and specify a path to them in the Docker-compose file.
+
+5. **[M5]**
+
+6. **[M6]**
+
 ## Task 1: Add a process supervisor to run several processes <a name="task1"></a>
 
 ## Task 2: Add a tool to manage membership in the web server cluster <a name="task2"></a>
