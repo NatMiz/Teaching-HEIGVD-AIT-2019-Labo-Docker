@@ -222,6 +222,9 @@ We could already run some commands like `curl` or `npm install` in a container a
 
 **Based on the three output files you have collected, what can you say about the way we generate it? What is the problem if any?**
 
+The `/tmp/haproxy.cfg` file is overwritten each time a new node joins the Serf cluster, which means that the only way to keep track of the current nodes is through docker.
+That also means that Serf is unaware of the exact number of nodes inside the cluster he manages. He only knows through gossip if a new node joins or if a node is down.<br/>
+For the user the fact that this files is overwritten implies that he has to use another service to know the exact population of the cluster.
 
 ## Task 5: Generate a new load balancer configuration when membership changes <a name="task5"></a>
 
