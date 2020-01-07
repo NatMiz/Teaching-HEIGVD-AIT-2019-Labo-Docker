@@ -1,0 +1,66 @@
+#!/usr/bin/with-contenv bash
+rsyslogd -c5 2>/dev/null
+
+# ##############################################################################
+# WARNING
+# ##############################################################################
+# S6 expects the processes it manages to stop when it sends them a SIGTERM signal.
+# The Serf agent does not stop properly when receiving a SIGTERM signal.
+#
+# Therefore, we need to do some tricks to remedy the situation. We need to
+# "simulate" the handling of SIGTERM in the script and send to Serf the signal
+# that makes it quit (SIGINT).
+#
+# Basically we need to do the following:
+# 1. Keep track of the process id (PID) of Serf Agent
+# 2. Catch the SIGTERM from S6 and send a SIGINT to Serf
+# 3. Make sure this shell script will not stop before S6 stops it, but when
+#    SIGTERM is sent, we need to stop everything.
+
+# Get the current process ID to avoid killing an unwanted process
+pid=$$
+
+# Define a function to kill the Serf process as Serf does not accept SIGTERM. In
+# place, we will send a SIGINT signal to the process to stop it correctly.
+sigterm() {
+  kill -USR1 $pid
+}
+
+# Trap the SIGTERM and in place run the function that will kill the process
+trap sigterm SIGTERM
+
+# We need to keep track of the PID of HAProxy in a file for the restart process.
+# We are forced to do that because the blocking process for S6 is this shell
+# script. When we send to S6 a command to restart our process, we will lose
+# the value of the variable pid. The pid variable will stay alive until any
+# restart or stop from S6.
+#
+# In the case of a restart we need to keep the HAProxy PID to give it back to
+# HAProxy. The comments on the HAProxy command will complete this exaplanation.
+if [ -f /var/run/haproxy.pid ]; then
+    HANDOFFPID=`cat /var/run/haproxy.pid`
+fi
+
+# To kill an old HAProxy and start a new one with minimal outage 
+# HAProxy provides the -sf/-st command-line options. With these options 
+# one can give the PIDs of currently running HAProxy processes at startup.
+# This will start new HAProxy processes and when startup is complete
+# it send FINISH or TERMINATE signals to the ones given in the argument. 
+#
+# The HANDOFFPID keeps track of the PID of HAProxy. We retrieve it from the
+# the file we written the last time we (re)started HAProxy.
+exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg -sf $HANDOFFPID &
+
+# Retrieve the process ID of the command run in background. Doing that, we will
+# be able to send the SIGINT signal through the sigterm function we defined
+# to replace the SIGTERM.
+pid=$!
+
+# And write it to a file to get it on next restart
+echo $pid > /var/run/haproxy.pid
+
+# Finally, we wait as S6 launches this shell script. This will simulate
+# a foreground process for S6. All that tricky stuff is required because
+# we use a process supervisor in a Docker environment. The applications need
+# to be adapted for such environments.
+wait

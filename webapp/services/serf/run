@@ -1,0 +1,57 @@
+#!/usr/bin/with-contenv bash
+
+# ##############################################################################
+# WARNING
+# ##############################################################################
+# S6 expects the processes it manages to stop when it sends them a SIGTERM signal.
+# The Serf agent does not stop properly when receiving a SIGTERM signal.
+#
+# Therefore, we need to do some tricks to remedy the situation. We need to
+# "simulate" the handling of SIGTERM in the script and send to Serf the signal
+# that makes it quit (SIGINT).
+#
+# Basically we need to do the following:
+# 1. Keep track of the process id (PID) of Serf Agent
+# 2. Catch the SIGTERM from S6 and send a SIGINT to Serf
+# 3. Make sure this shell script will not stop before S6 stops it, but when
+#    SIGTERM is sent, we need to stop everything.
+
+# Get the current process ID to avoid killing an unwanted process
+pid=$$
+
+# Define a function to kill the Serf process as Serf does not accept SIGTERM. In
+# place, we will send a SIGINT signal to the process to stop it correctly.
+sigterm() {
+  kill -INT $pid
+}
+
+# Trap the SIGTERM and in place run the function that will kill the process
+trap sigterm SIGTERM
+
+# ##############################################################################
+# SERF START
+# ##############################################################################
+
+# We build the Serf command to run the agent
+COMMAND="/opt/bin/serf agent"
+COMMAND="$COMMAND --join ha"
+COMMAND="$COMMAND --tag role=$ROLE"
+
+# ##############################################################################
+# SERF END
+# ##############################################################################
+
+# Log the command
+echo "$COMMAND"
+
+# Execute the command in the background
+exec $COMMAND &
+
+# Retrieve the process ID of the command run in background. Doing that, we will
+# be able to send the SIGINT signal through the sigterm function we defined
+# to replace the SIGTERM.
+pid=$!
+
+# Wait forever to simulate a foreground process for S6. This will act as our
+# blocking process that S6 is expecting.
+wait
